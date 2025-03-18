@@ -27,17 +27,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RedisConfig {
 
+
+
+
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connection) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connection)   {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         mapper.registerModule(new Jdk8Module());
         mapper.registerModule(new JavaTimeModule());
 
         PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
-            .allowIfBaseType(Object.class)
-            .build();
-        mapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+                                                                    .allowIfBaseType(Object.class)
+                                                                    .build();
+        mapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.EVERYTHING, JsonTypeInfo.As.PROPERTY);
 
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connection);
