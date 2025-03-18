@@ -22,6 +22,8 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/post")
@@ -34,6 +36,7 @@ public class PostController {
             @PathVariable("id") final Long postId,
             @AuthenticationPrincipal final MemberDetails memberDetails
     ) {
+        postService.checkMembership(postId, memberDetails.getId());
 
         PostRespDto.GetPostDto post = postService.getPost(postId, memberDetails.getId());
 
@@ -52,6 +55,15 @@ public class PostController {
         Page<PostRespDto.GetPostListDto> posts = postService.getPostsBySearch(groupId, search, postStatus, pageable);
 
         return ApiResponse.of(true, HttpStatus.OK, "게시물 목록을 성공적으로 불러왔습니다", posts);
+    }
+
+    @GetMapping("/hot")
+    public ApiResponse<?> getHotPosts(
+            @RequestParam final Long groupId
+    ) {
+        List<PostRespDto.GetPostListDto> posts = postService.getTopFivePosts(groupId);
+
+        return ApiResponse.of(true, HttpStatus.OK, "인기 게시물 목록을 성곡적으로 불러왔습니다", posts);
     }
 
     @PostMapping
@@ -98,22 +110,5 @@ public class PostController {
         postService.deletePost(memberDetails.getId(), id);
 
         return ApiResponse.of(true, HttpStatus.OK, "게시글이 성공적으로 삭제되었습니다");
-    }
-
-    @GetMapping("/members")
-    @CustomPageJsonSerializer
-    public ApiResponse<?> getMembers(
-            @Valid @ModelAttribute final PostReqDto.SearchPostDto searchPost,
-            @PageableDefault Pageable pageable,
-            final BindingResult bindingResult,
-            @AuthenticationPrincipal final MemberDetails memberDetails) {
-
-        if (bindingResult.hasErrors()) {
-            throw new PostException(GlobalErrorCode.INVALID_INPUT_VALUE);
-        }
-
-        Page<PostRespDto.GetPostListDto> posts = postService.getPostsByUser(searchPost, pageable, memberDetails.getId());
-
-        return ApiResponse.of(true, HttpStatus.OK, "게시물 목록을 성공적으로 불러왔습니다", posts);
     }
 }
