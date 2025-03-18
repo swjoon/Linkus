@@ -31,6 +31,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    // monitoring
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-core")
+
+    // Prometheus
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
     // WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     // MongoDB
