@@ -58,8 +58,25 @@ public class Post extends BaseEntity {
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    private Group group;
 
-    public void delete(){
-        if(!this.getDisabled()){
+    @Builder.Default
+    @Column(nullable = false)
+    private Long todayViewCount = 0L;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Long totalViewCount = 0L;
+
+    public void addTodayViewCount(Long viewCount) {
+        this.todayViewCount += viewCount;
+    }
+
+    public void refreshViewCount() {
+        totalViewCount += todayViewCount;
+        todayViewCount = 0L;
+    }
+
+    public void delete() {
+        if (!this.getDisabled()) {
             deactivate();
         }
     }
