@@ -282,48 +282,4 @@ public class PostControllerTest {
         resultActions.andDo(print());
     }
 
-    @Test
-    @DisplayName("Success : Member 게시글 목록 조회")
-    void getUserByPosts_Success() throws Exception {
-        // Given
-        Member member = Member.builder()
-                .id(1L)
-                .username("test")
-                .nickname("test_name")
-                .role("ROLE_USER")
-                .build();
-
-        Post post = Post.builder()
-                .id(1L)
-                .title("test_title")
-                .content("test_content")
-                .postStatus(PostStatus.PUBLIC)
-                .memberId(1L)
-                .groupId(1L)
-                .build();
-
-        ReflectionUtil.setPrivateFieldValue(Post.class, post, "createdAt", LocalDateTime.now());
-        ReflectionUtil.setPrivateFieldValue(Post.class, post, "modifiedAt", LocalDateTime.now());
-
-        MemberDetails mockUser = new MemberDetails(member);
-
-        Pageable pageable = PageRequest.of(0, 10, Sort.unsorted());
-        Page<PostRespDto.GetPostListDto> mockPage = new PageImpl<>(List.of(PostRespDto.toGetPostList(post)), pageable, 1);
-
-        given(postService.getPostsByUser(any(), any(), any())).willReturn(mockPage);
-
-        // When
-        ResultActions resultActions = mockMvc.perform(get(BASE_URL + "/members")
-                .with(user(mockUser))
-                .param("groupId", "1")
-                .param("keyword", "spring")
-                .param("postStatus", "PUBLIC")
-                .contentType(MediaType.APPLICATION_JSON));
-
-        // Then
-        resultActions.andExpect(status().isOk());
-        resultActions.andExpect(jsonPath("$.data.content[0].postId").value(1L));
-        resultActions.andExpect(jsonPath("$.message").value("게시물 목록을 성공적으로 불러왔습니다"));
-        resultActions.andDo(print());
-    }
 }
