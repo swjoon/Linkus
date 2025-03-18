@@ -1,0 +1,78 @@
+services:
+  spring-boot-app:
+    image: my-spring-boot-app
+    container_name: spring-boot-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    networks:
+      - monitoring
+    volumes:
+      - ./uploads:/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitoring
+    depends_on:
+      - spring-boot-app
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3100:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  jmeter:
+    image: justb4/jmeter
+    container_name: jmeter
+    depends_on:
+      - spring-boot-app
+    networks:
+      - monitoring
+    volumes:
+      - ./jmeter:/tests
+    entrypoint: [ "/entrypoint.sh", "-n", "-t", "/tests/test-plan.jmx", "-l", "/results/test-results.jtl" ]
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "20", "1", "--loglevel", "warning"]
+    restart: always
+    networks:
+      - monitoring
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  grafana-storage:
+
+networks:
+  monitoring:
+    external: true
+
