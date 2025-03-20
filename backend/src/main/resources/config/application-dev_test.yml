@@ -1,0 +1,17 @@
+# application-dev_test.yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics,health,prometheus
+  endpoint:
+    metrics:
+      enabled: true
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true # Prometheus 연동
+  tags:
+    application: spring-boot-app

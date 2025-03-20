@@ -75,6 +75,9 @@ public class SecurityConfig {
                                 "/oauth2/authorization/**",
                                 "/login/oauth2/code/*"
                         ).permitAll()
+                        // spring-boot-actuator
+                        .requestMatchers("/actuator/**")
+                        .permitAll()
                         // API 엔드포인트
                         .requestMatchers(
                                 "/api/v1/members/**",

@@ -24,6 +24,8 @@ import com.app.backend.domain.post.exception.PostErrorCode;
 import com.app.backend.domain.post.exception.PostException;
 import com.app.backend.domain.post.repository.post.PostRepository;
 import com.app.backend.domain.post.repository.postAttachment.PostAttachmentRepository;
+import com.app.backend.global.annotation.CustomCache;
+import com.app.backend.global.annotation.CustomCacheDelete;
 import com.app.backend.global.config.FileConfig;
 import com.app.backend.global.error.exception.GlobalErrorCode;
 import com.app.backend.global.redis.repository.RedisRepository;
@@ -54,17 +56,17 @@ public class PostService {
 
     private final int MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-    public PostRespDto.GetPostDto getPost(final Long postId, final Long memberId) {
-        String redisKey = "post:" + postId;
+    public void checkMembership(final Long postId, final Long memberId) {
         Post post = getPostEntity(postId);
 
         if (!post.getPostStatus().equals(PostStatus.PUBLIC) && !getMemberShipEntity(post.getGroupId(), memberId).getStatus().equals(MembershipStatus.APPROVED)) {
             throw new PostException(PostErrorCode.POST_UNAUTHORIZATION);
         }
+    }
 
-        if (redisRepository.isKeyExists(redisKey)) {
-            return (PostRespDto.GetPostDto) redisRepository.get(redisKey);
-        }
+    @CustomCache(prefix = "post", key = "postid", id = "postId", ttl = 2, viewCount = true, viewCountTtl = 10, history = true)
+    public PostRespDto.GetPostDto getPost(final Long postId, final Long memberId) {
+        Post post = getPostEntity(postId);
 
         Member member = getMemberEntity(memberId);
 
@@ -80,13 +82,16 @@ public class PostService {
                 .map(file -> PostAttachmentRespDto.GetPostImage(file, fileConfig.getIMAGE_DIR()))
                 .toList();
 
-        PostRespDto.GetPostDto getPostDto = PostRespDto.toGetPost(post, member, images, documents);
-
-        redisRepository.save(redisKey, getPostDto, 5, TimeUnit.MINUTES);
-
-        return getPostDto;
+        return PostRespDto.toGetPost(post, member, images, documents);
     }
 
+    @CustomCache(prefix = "post", key = "groupid", id = "groupId", ttl = 1)
+    public List<PostRespDto.GetPostListDto> getTopFivePosts(final Long groupId) {
+        return postRepository
+                .findPostsByGroupIdOrderByTodayViewsCountDesc(groupId,5,false)
+                .stream()
+                .map(PostRespDto::toGetPostList).toList();
+    }
 
     public Page<PostRespDto.GetPostListDto> getPostsBySearch(final Long groupId, final String search, final PostStatus postStatus, final Pageable pageable) {
         return postRepository
@@ -100,7 +105,6 @@ public class PostService {
                 .map(PostRespDto::toGetPostList);
     }
 
-
     @Transactional
     public Post savePost(final Long memberId, final PostReqDto.SavePostDto savePost, final MultipartFile[] files) {
         GroupMembership membership = getMemberShipEntity(savePost.getGroupId(), memberId);
@@ -112,6 +116,7 @@ public class PostService {
         if (savePost.getPostStatus().equals(PostStatus.NOTICE) && !membership.getGroupRole().equals(GroupRole.LEADER)) {
             throw new PostException(PostErrorCode.POST_UNAUTHORIZATION);
         }
+
         Member member = getMemberEntity(memberId);
         Post post = postRepository.save(savePost.toEntity(memberId,member.getNickname()));
 
@@ -120,10 +125,9 @@ public class PostService {
         return post;
     }
 
-
     @Transactional
+    @CustomCacheDelete(prefix = "post", key = "postid", id = "postId")
     public Post updatePost(final Long memberId, final Long postId, final PostReqDto.ModifyPostDto modifyPost, final MultipartFile[] files) {
-        String redisKey = "post:" + postId;
         GroupMembership membership = getMemberShipEntity(modifyPost.getGroupId(), memberId);
         Post post = getPostEntity(postId);
 
@@ -147,15 +151,11 @@ public class PostService {
             postAttachmentRepository.deleteByIdList(modifyPost.getRemoveIdList());
         }
 
-        if(redisRepository.isKeyExists(redisKey)) {
-            redisRepository.delete(redisKey);
-        }
-
         return post;
     }
 
-
     @Transactional
+    @CustomCacheDelete(prefix = "post", key = "postid", id = "postId")
     public void deletePost(final Long memberId, final Long postId) {
         String redisKey = "post:" + postId;
         Post post = getPostEntity(postId);
@@ -178,24 +178,20 @@ public class PostService {
         post.delete();
     }
 
-
     private Member getMemberEntity(final Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new PostException(GlobalErrorCode.ENTITY_NOT_FOUND));
     }
-
 
     private Post getPostEntity(final Long postId) {
         return postRepository.findByIdAndDisabled(postId, false)
                 .orElseThrow(() -> new PostException(PostErrorCode.POST_NOT_FOUND));
     }
 
-
     private GroupMembership getMemberShipEntity(final Long groupId, final Long memberId) {
         return groupMembershipRepository.findById(GroupMembershipId.builder().groupId(groupId).memberId(memberId).build())
                 .orElseThrow(() -> new GroupMembershipException(GroupMembershipErrorCode.GROUP_MEMBERSHIP_NOT_FOUND));
     }
-
 
     // 파일 크기 체크
     private void checkFileSize(final MultipartFile[] files, final Long oldSize, final Long maxSize) {
@@ -204,7 +200,6 @@ public class PostService {
             throw new FileException(FileErrorCode.FILE_SIZE_EXCEEDED);
         }
     }
-
 
     // 파일 저장 및 롤백
     private void saveFiles(final MultipartFile[] files, final Post post) {
@@ -236,5 +231,3 @@ public class PostService {
         }
     }
 }
-
-// Todo :투표 시스템 , s3 , 핫한 게시글 상단 표기 캐싱 + 홈 화면 데이터 처리 캐싱 , 알림
