@@ -3,6 +3,10 @@ name: Gradle Build Workflow
 on:
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -52,3 +56,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: "Code Coverage"
           update-comment: true
+#          min-coverage-overall: 40
+#          min-coverage-changed-files: 60
