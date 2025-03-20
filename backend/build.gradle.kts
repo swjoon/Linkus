@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
+    jacoco
 }
 
 group = "com.app"
@@ -10,6 +11,18 @@ version = "0.0.1-SNAPSHOT"
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+jacoco{
+    toolVersion = "0.8.12"
+}
+
+tasks.jacocoTestReport{
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
     }
 }
 
@@ -84,6 +97,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
 }
 
 //Querydsl - Start
